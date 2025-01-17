@@ -3,6 +3,7 @@
 namespace SD;
 
 use Html;
+use MediaWiki\MediaWikiServices;
 
 /**
  * Static functions for Semantic Drilldown, for use by the Page Schemas
@@ -22,6 +23,8 @@ class PageSchemas extends \PSExtensionHandler {
 	/**
 	 * Returns an object containing information on a filter, based on XML
 	 * from the Page Schemas extension.
+	 *
+	 * @return array
 	 */
 	public static function createPageSchemasObject( $tagName, $xml ) {
 		$sd_array = [];
@@ -64,6 +67,8 @@ class PageSchemas extends \PSExtensionHandler {
 	/**
 	 * Returns the HTML for setting the filter options, for the
 	 * Semantic Drilldown section in Page Schemas' "edit schema" page
+	 *
+	 * @return array
 	 */
 	public static function getFieldEditingHTML( $psField ) {
 		// $require_filter_label = wfMessage( 'sd_createfilter_requirefilter' )->text();
@@ -101,7 +106,10 @@ class PageSchemas extends \PSExtensionHandler {
 		$html_text .= wfMessage( 'sd_createfilter_usepropertyvalues' )->text() . "\n";
 		$html_text .= Html::input( 'sd_values_source_num', 'category', 'radio', $fromCategoryAttrs ) . "\n";
 		$html_text .= "\t" . wfMessage( 'sd_createfilter_usecategoryvalues' )->text() . "\n";
-		$categories = ( new DbService( null, wfGetDB( DB_REPLICA ) ) )->getTopLevelCategories();
+		$dbr = MediaWikiServices::getInstance()
+			->getDBLoadBalancer()
+			->getMaintenanceConnectionRef( DB_REPLICA );
+		$categories = ( new DbService( null, $dbr ) )->getTopLevelCategories();
 		$categoriesHTML = "";
 		foreach ( $categories as $category ) {
 			$categoryOptionAttrs = [];
@@ -146,6 +154,8 @@ class PageSchemas extends \PSExtensionHandler {
 	/**
 	 * Displays the information about the filter (if any exists)
 	 * for one field in the Page Schemas XML.
+	 *
+	 * @return array
 	 */
 	public static function getFieldDisplayValues( $field_xml ) {
 		foreach ( $field_xml->children() as $tag => $child ) {

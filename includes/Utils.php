@@ -4,7 +4,6 @@ namespace SD;
 
 use ALItem;
 use ALRow;
-use MagicWord;
 use MagicWordFactory;
 use MediaWiki\MediaWikiServices;
 use SMW\SQLStore\SQLStore;
@@ -24,33 +23,6 @@ class Utils {
 		$vars['sdgDownArrowImage'] = "$sdSkinsPath/down-arrow.png";
 		$vars['sdgRightArrowImage'] = "$sdSkinsPath/right-arrow.png";
 		return true;
-	}
-
-	/**
-	 * Helper function to get the SMW data store for different versions
-	 * of SMW.
-	 */
-	public static function getSMWStore() {
-		if ( class_exists( '\SMW\StoreFactory' ) ) {
-			// SMW 1.9+
-			return \SMW\StoreFactory::getStore();
-		} else {
-			return smwfGetStore();
-		}
-	}
-
-	/**
-	 * Helper function to have backward compatibility with SMW < 3.2
-	 *
-	 * @return \SMW\Localizer\LocalLanguage\LocalLanguage
-	 */
-	public static function getSMWContLang() {
-		if ( function_exists( 'smwfContLang' ) ) {
-			return smwfContLang();
-		} else {
-			global $smwgContLang;
-			return $smwgContLang;
-		}
 	}
 
 	public static function monthToString( $month ) {
@@ -77,7 +49,8 @@ class Utils {
 			return wfMessage( 'october' )->text();
 		} elseif ( $month == 11 ) {
 			return wfMessage( 'november' )->text();
-		} else { // if ($month == 12) {
+		} else {
+			// if ($month == 12) {
 			return wfMessage( 'december' )->text();
 		}
 	}
@@ -105,7 +78,8 @@ class Utils {
 			return 10;
 		} elseif ( $str == wfMessage( 'november' )->text() ) {
 			return 11;
-		} else { // if ($strmonth == wfMessage('december')->text()) {
+		} else {
+			// if ($strmonth == wfMessage('december')->text()) {
 			return 12;
 		}
 	}
@@ -120,7 +94,8 @@ class Utils {
 		if ( count( $words_array ) > $index_of_word ) {
 			$string_value = ucwords( $words_array[$index_of_word] );
 		} elseif ( count( $words_array ) == 0 ) {
-			$string_value = $bool_value; // a safe value if no words are found
+			// a safe value if no words are found
+			$string_value = $bool_value;
 		} else {
 			$string_value = ucwords( $words_array[0] );
 		}
@@ -129,6 +104,8 @@ class Utils {
 
 	/**
 	 * Register magic-word variable IDs
+	 *
+	 * @return bool true or false
 	 */
 	public static function addMagicWordVariableIDs( &$magicWordVariableIDs ) {
 		$magicWordVariableIDs[] = 'MAG_HIDEFROMDRILLDOWN';
@@ -138,12 +115,14 @@ class Utils {
 
 	/**
 	 * Set the actual value of the magic words
+	 *
+	 * @return bool true or false
 	 */
 	public static function addMagicWordLanguage( &$magicWords, $langCode ) {
 		switch ( $langCode ) {
-		default:
-			$magicWords['MAG_HIDEFROMDRILLDOWN'] = [ 0, '__HIDEFROMDRILLDOWN__' ];
-			$magicWords['MAG_SHOWINDRILLDOWN'] = [ 0, '__SHOWINDRILLDOWN__' ];
+			default:
+				$magicWords['MAG_HIDEFROMDRILLDOWN'] = [ 0, '__HIDEFROMDRILLDOWN__' ];
+				$magicWords['MAG_SHOWINDRILLDOWN'] = [ 0, '__SHOWINDRILLDOWN__' ];
 		}
 		return true;
 	}
@@ -151,6 +130,8 @@ class Utils {
 	/**
 	 * Set values in the page_props table based on the presence of the
 	 * 'HIDEFROMDRILLDOWN' and 'SHOWINDRILLDOWN' magic words in a page
+	 *
+	 * @return bool true or false
 	 */
 	public static function handleShowAndHide( &$parser, &$text ) {
 		if ( class_exists( MagicWordFactory::class ) ) {
@@ -158,9 +139,6 @@ class Utils {
 			$factory = MediaWikiServices::getInstance()->getMagicWordFactory();
 			$mw_hide = $factory->get( 'MAG_HIDEFROMDRILLDOWN' );
 			$mw_show = $factory->get( 'MAG_SHOWINDRILLDOWN' );
-		} else {
-			$mw_hide = MagicWord::get( 'MAG_HIDEFROMDRILLDOWN' );
-			$mw_show = MagicWord::get( 'MAG_SHOWINDRILLDOWN' );
 		}
 		$parserOutput = $parser->getOutput();
 		if ( $mw_hide->matchAndRemove( $text ) ) {
@@ -211,7 +189,7 @@ class Utils {
 	 * @return string
 	 */
 	public static function escapeString( $val ) {
-		return htmlspecialchars( $val, ENT_QUOTES, 'UTF-8' );
+		return htmlspecialchars( $val ?? '', ENT_QUOTES, 'UTF-8' );
 	}
 
 	/**

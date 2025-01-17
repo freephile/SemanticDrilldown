@@ -2,6 +2,7 @@
 
 namespace SD;
 
+use MediaWiki\MediaWikiServices;
 use SD\Sql\PropertyTypeDbInfo;
 use SD\Sql\SqlProvider;
 use SMWDIProperty;
@@ -24,6 +25,11 @@ class Filter {
 	private ?string $timePeriod;
 	private $allowedValues;
 
+	/**
+	 * possible applied filters value
+	 *
+	 * @var array
+	 */
 	public $possible_applied_filters = [];
 
 	public function __construct(
@@ -101,7 +107,9 @@ class Filter {
 		$possible_dates = [];
 		$property_value = $this->escapedProperty();
 		$date_field = PropertyTypeDbInfo::dateField( $this->propertyType() );
-		$dbw = wfGetDB( DB_MASTER );
+		$dbw = MediaWikiServices::getInstance()
+				->getDBLoadBalancer()
+				->getMaintenanceConnectionRef( DB_PRIMARY );
 		list( $yearValue, $monthValue, $dayValue ) = SqlProvider::getDateFunctions( $date_field );
 		$fields = "$yearValue, $monthValue, $dayValue";
 		$datesTable = $dbw->tableName( PropertyTypeDbInfo::tableName( $this->propertyType() ) );
@@ -156,7 +164,8 @@ END;
 			} elseif ( $timePeriod == 'year' ) {
 				$date_string = $row[0];
 				$possible_dates[$date_string] = $count;
-			} else { // if ( $this->timePeriod() == 'decade' )
+			} else {
+				// if ( $this->timePeriod() == 'decade' )
 				// Unfortunately, there's no SQL DECADE()
 				// function - so we have to take these values,
 				// which are grouped into year "buckets", and
@@ -179,7 +188,8 @@ END;
 				'month' => $row[1] ?? 0,
 				'day' => $row[2] ?? 0
 			];
-			$padded_date = sprintf( '%04d%02d%02d', // YYYYMMDD, for comparing with previous min/max date
+			// YYYYMMDD, for comparing with previous min/max date
+			$padded_date = sprintf( '%04d%02d%02d',
 				$date['year'],
 				$date['month'],
 				$date['day']
@@ -227,7 +237,9 @@ END;
 	public function getAllValues(): PossibleFilterValues {
 		$possible_values = [];
 		$property_value = $this->escapedProperty();
-		$dbw = wfGetDB( DB_MASTER );
+		$dbw = MediaWikiServices::getInstance()
+				->getDBLoadBalancer()
+				->getMaintenanceConnectionRef( DB_PRIMARY );
 		$property_table_name = $dbw->tableName( PropertyTypeDbInfo::tableName( $this->propertyType() ) );
 		$revision_table_name = $dbw->tableName( 'revision' );
 		$page_props_table_name = $dbw->tableName( 'page_props' );
@@ -263,14 +275,16 @@ END;
 			if ( $value_string === '' ) {
 				continue;
 			}
-			$possible_values[] = new PossibleFilterValue( $value_string, $row['count'], htmlspecialchars_decode( $row['displayTitle'] ) );
+			$possible_values[] = new PossibleFilterValue( $value_string, $row['count'], htmlspecialchars_decode( $row['displayTitle'] ?? '' ) );
 		}
 
 		return new PossibleFilterValues( $possible_values );
 	}
 
 	private function getTimePeriod() {
-		$dbw = wfGetDB( DB_MASTER );
+		$dbw = MediaWikiServices::getInstance()
+				->getDBLoadBalancer()
+				->getMaintenanceConnectionRef( DB_PRIMARY );
 		$property_value = $this->escapedProperty();
 		$date_field = PropertyTypeDbInfo::dateField( $this->propertyType() );
 		$datesTable = $dbw->tableName( PropertyTypeDbInfo::tableName( $this->propertyType() ) );
@@ -285,20 +299,26 @@ END;
 END;
 		$res = $dbw->query( $sql );
 		$row = $res->fetchRow();
-		$minDate = str_replace( '-', '/', $row[0] ); // for sqlite
+		// for sqlite
+		$minDate = str_replace( '-', '/', $row[0] );
 		if ( $minDate === null ) {
 			return null;
 		}
 		$minDateParts = explode( '/', $minDate );
 		if ( count( $minDateParts ) == 3 ) {
+			// check if array can be used instead of list
+			// [ $minYear, $minMonth, $minDay ] = $minDateParts;
 			list( $minYear, $minMonth, $minDay ) = $minDateParts;
 		} else {
 			$minYear = $minDateParts[0];
 			$minMonth = $minDay = 0;
 		}
-		$maxDate = str_replace( '-', '/', $row[1] ); // for sqlite
+		// for sqlite
+		$maxDate = str_replace( '-', '/', $row[1] );
 		$maxDateParts = explode( '/', $maxDate );
 		if ( count( $maxDateParts ) == 3 ) {
+			// check if array can be used instead of list
+			// [ $maxYear, $maxMonth, $maxDay ] = $maxDateParts;
 			list( $maxYear, $maxMonth, $maxDay ) = $maxDateParts;
 		} else {
 			$maxYear = $maxDateParts[0];
@@ -324,11 +344,11 @@ END;
 		// default), in case there is no type set for this property.
 		$propertyType = 'page';
 
-		$store = Utils::getSMWStore();
+		$store = smwfGetStore();
 		$escapedProperty = $this->escapedProperty();
 		$propPage = new SMWDIWikiPage( $escapedProperty, SMW_NS_PROPERTY, '' );
 		$types = $store->getPropertyValues( $propPage, new SMWDIProperty( '_TYPE' ) );
-		$datatypeLabels = Utils::getSMWContLang()->getDatatypeLabels();
+		$datatypeLabels = smwfContLang()->getDatatypeLabels();
 		if ( count( $types ) > 0 ) {
 			if ( $types[0] instanceof SMWDIWikiPage ) {
 				$typeValue = $types[0]->getDBkey();
